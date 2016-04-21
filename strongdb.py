@@ -217,7 +217,7 @@ class AssemblyModule():
 
         for ins in instructions:
             if frame.pc() == ins['addr']:
-                str += Strongdb.colorize('\t' + hex(ins['addr'])[:-1] + ':\t', 'red')
+                str += Strongdb.colorize('-->\t' + hex(ins['addr'])[:-1] + ':\t', 'red')
                 str += Strongdb.colorize(ins['asm'], 'green') + '\n'
             else:
                 str += Strongdb.colorize('\t' + hex(ins['addr'])[:-1] + ':\t', 'red')
