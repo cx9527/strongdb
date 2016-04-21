@@ -24,8 +24,6 @@ class Strongdb:
         def get_prompt(prompt):
             if self.is_debuggee_running():
                 status = gdb.prompt.substitute_prompt("\[\e[0;32m\]-->\[\e[0m\]")
-                # Strongdb.clear_screen()
-                # print self.modules[0]['instance'].get_contents()
             else:
                 status = gdb.prompt.substitute_prompt("\[\e[1;31m\]-->\[\e[0m\]")
 
@@ -40,6 +38,7 @@ class Strongdb:
         Strongdb.term_width = Strongdb.get_terminal_width()
 
         Strongdb.run_cmd('set $sgdb_stack_width = 4')
+        Strongdb.run_cmd('set pagination off')
 
     def init_handlers(self):
         # gdb.events.cont.connect(self.on_continue)
@@ -49,21 +48,26 @@ class Strongdb:
         # self.modules.append({"name": "RegistersModule", "instance": RegistersModule()})
         self.modules['RegistersModule'] = RegistersModule()
         self.modules['StackModule'] = StackModule()
+        self.modules['AssemblyModule'] = AssemblyModule()
 
     def on_continue(self, event):
         print "on continue"
 
     def on_stop(self, event):
         self.display(self.modules['RegistersModule'].get_contents(), True)
+        self.display(self.modules['AssemblyModule'].get_contents())
         self.display(self.modules['StackModule'].get_contents())
-        frame = gdb.selected_frame()
-        print frame.architecture().disassemble(frame.pc(), count=10)
 
     def display(self, info, clear_screen=False):
         if clear_screen:
             self.clear_screen()
 
         gdb.write(info)
+
+    @staticmethod
+    def is_arm_mode():
+        value = int(Strongdb.run_cmd('i r cpsr').split(None)[1], 16)
+        return not (value & 0x20)
 
     @staticmethod
     def clear_screen():
@@ -100,7 +104,7 @@ class RegistersModule():
         self.get_regs_info()
 
         max_name_len = max(len(name) for name in self.reg_names)
-        max_len = max_name_len + 19
+        max_len = 25
         # regs_per_line = (Strongdb.term_width) / max_len
         # spaces = int(math.floor(float(Strongdb.term_width % max_len) / float(regs_per_line)))
         regs_per_line, padding = Strongdb.get_display_padding(max_len)
@@ -109,11 +113,11 @@ class RegistersModule():
         i = 1;
         for reg_name in self.reg_names:
             if self.old_regs[reg_name]['is_changed'] == True:
-                str += Strongdb.colorize(reg_name.rjust(max_name_len), 'red') + '-' + Strongdb.colorize(
-                        self.old_regs[reg_name]['value'], 'white') + ' ' * padding
+                str += Strongdb.colorize(' ' * 5 + reg_name.rjust(4), 'red') + '-' + Strongdb.colorize(
+                        self.old_regs[reg_name]['value'], 'white') + ' ' * 5
             else:
-                str += Strongdb.colorize(reg_name.rjust(max_name_len), 'red') + '-' + Strongdb.colorize(
-                        self.old_regs[reg_name]['value'], 'black') + ' ' * padding
+                str += Strongdb.colorize(' ' * 5 + reg_name.rjust(4), 'red') + '-' + Strongdb.colorize(
+                        self.old_regs[reg_name]['value'], 'black') + ' ' * 5
 
             if i == regs_per_line:
                 i = 0
@@ -121,12 +125,14 @@ class RegistersModule():
 
             i += 1
 
-        str += Strongdb.colorize('└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
+        str += Strongdb.colorize('\n└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
         return str
+
 
     def get_regs_info(self):
         regs = Strongdb.run_cmd("i r").strip().split('\n')
         self.reg_names = []
+
 
         run_start = len(self.old_regs) == 0
         for reg_info in regs:
@@ -138,7 +144,7 @@ class RegistersModule():
             reg_name = reg[0]
             self.reg_names.append(reg_name)
             if reg[1][0: 2] == '0x':
-                reg_value_hex = '0x' + reg[1][2:].rjust(16, '0')
+                reg_value_hex = '0x' + reg[1][2:].rjust(8, '0')
             else:
                 reg_value_hex = reg[1].ljust(18)
 
@@ -150,6 +156,7 @@ class RegistersModule():
                     self.old_regs[reg_name] = {'value': reg_value_hex, 'is_changed': True}
                 else:
                     self.old_regs[reg_name] = {'value': reg_value_hex, 'is_changed': False}
+
 
 
 class BacktraceModule():
@@ -171,27 +178,55 @@ class StackModule():
         for line in self.stack_info:
             for idx in range(len(line)):
                 if idx == 0:
-                    str += Strongdb.colorize(' ' * 4 + line[idx] + '\t\t', 'red')
-                elif idx == len(line) - 1:
-                    str += '\n'
+                    str += Strongdb.colorize('\t' + line[idx] + '\t\t', 'red')
                 else:
-                    str += Strongdb.colorize(line[idx] + '\t', 'black')
+                    str += Strongdb.colorize(line[idx] + '   ', 'black')
+
+                if idx == len(line) - 1:
+                    str += '\n'
 
         str += Strongdb.colorize('└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
         return str
 
-
-
     def get_stack_info(self):
-        stack_info = Strongdb.run_cmd("x/48bx $rsp").strip().split('\n')
+        stack_info = Strongdb.run_cmd("x/48bx $sp").strip().split('\n')
         for line in stack_info:
             line_list = line.split(None)
+            line_list.append(Strongdb.colorize('│', 'cyan'))
+            for idx in range(1, 9):
+                if int(line_list[idx], 16) > 0x20 and int(line_list[idx], 16) < 0x7f:
+                    line_list.append(chr(int(line_list[idx], 16)))
+                else:
+                    line_list.append('·')
             self.stack_info.append(line_list)
 
 
 class AssemblyModule():
     def get_contents(self):
-        return ""
+        str = ""
+        str += Strongdb.colorize('┌─ Assembly ' + '─' * (Strongdb.term_width - 13) + '┐\n\n', 'cyan')
+
+        if Strongdb.is_arm_mode():
+            length_per_ins = 4
+        else:
+            length_per_ins = 2
+
+        frame = gdb.selected_frame()
+        instructions = frame.architecture().disassemble(frame.pc() - 4 * length_per_ins, count=10)
+
+
+        for ins in instructions:
+            if frame.pc() == ins['addr']:
+                str += Strongdb.colorize('\t' + hex(ins['addr'])[:-1] + ':\t', 'red')
+                str += Strongdb.colorize(ins['asm'], 'green') + '\n'
+            else:
+                str += Strongdb.colorize('\t' + hex(ins['addr'])[:-1] + ':\t', 'red')
+                str += Strongdb.colorize(ins['asm'], 'white') + '\n'
+
+
+        str += Strongdb.colorize('\n└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
+        Strongdb.is_arm_mode()
+        return str
 
 
 class HelloWorld(gdb.Command):
