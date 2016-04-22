@@ -1,7 +1,7 @@
 # Strongdb
 
 ## What is it?
-用于辅助调试android native的gdb UI插件，使调试native程序时有更友好的界面。插件使用python开发，使用了gdb的[python api接口](https://sourceware.org/gdb/onlinedocs/gdb/Python-API.html)实现主要功能。
+用于辅助调试android native的gdb UI插件，使调试native程序时有更友好的界面。插件使用python开发，使用了gdb的[python api接口](https://sourceware.org/gdb/onlinedocs/gdb/Python-API.html)实现主要功能。代码写的比较乱，也有很多问题，请大家多提意见。
 
 
 ![debug1](screenshots/debug1.png)
@@ -19,5 +19,5 @@ echo "source ~/strongdb/strongdb.py" > ~/.gdbinit
 
 ## Future
 * 实现辅助调试用的指令。
-* 解析jni函数调用。
+* 解析jni函数调用。 (已实现)
 * 解析函数参数。
