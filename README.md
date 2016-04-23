@@ -17,6 +17,9 @@ git clone https://github.com/cx9527/strongdb.git ~/strongdb
 echo "source ~/strongdb/strongdb.py" > ~/.gdbinit
 ```
 
+## JNIEnv
+要使用jni函数解析功能，首先要获取JNIEnv的地址，然后使用```set $sgdb_jnienv = address```来设置这个变量。
+
 ## Future
 * 实现辅助调试用的指令。
 * 解析jni函数调用。 (已实现)
