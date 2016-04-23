@@ -9,7 +9,6 @@ import math
 
 class Strongdb:
     modules = {}
-    term_width = 0
 
     COLOR = {'black': '30m', 'red': '31m', 'green': '32m', 'yellow': '33m', 'blue': '34m', 'magenta': '35m',
              'cyan': '36m', 'white': '37m'}
@@ -35,18 +34,14 @@ class Strongdb:
         return gdb.selected_inferior().pid != 0
 
     def init_var(self):
-        Strongdb.term_width = Strongdb.get_terminal_width()
-
         Strongdb.run_cmd('set $sgdb_stack_width = 4')
         Strongdb.run_cmd('set $sgdb_jnienv = 0')
         Strongdb.run_cmd('set pagination off')
 
     def init_handlers(self):
-        # gdb.events.cont.connect(self.on_continue)
         gdb.events.stop.connect(self.on_stop)
 
     def init_modules(self):
-        # self.modules.append({"name": "RegistersModule", "instance": RegistersModule()})
         self.modules['RegistersModule'] = RegistersModule()
         self.modules['StackModule'] = StackModule()
         self.modules['AssemblyModule'] = AssemblyModule()
@@ -89,8 +84,8 @@ class Strongdb:
 
     @staticmethod
     def get_display_padding(max_len):
-        groups_per_line = (Strongdb.term_width) / max_len
-        padding = int(math.floor(float(Strongdb.term_width % max_len) / float(groups_per_line)))
+        groups_per_line = (Strongdb.get_terminal_width()) / max_len
+        padding = int(math.floor(float(Strongdb.get_terminal_width() % max_len) / float(groups_per_line)))
 
         return (groups_per_line, padding)
 
@@ -106,11 +101,11 @@ class RegistersModule():
 
         max_name_len = max(len(name) for name in self.reg_names)
         max_len = 25
-        # regs_per_line = (Strongdb.term_width) / max_len
-        # spaces = int(math.floor(float(Strongdb.term_width % max_len) / float(regs_per_line)))
+        # regs_per_line = (Strongdb.get_terminal_width()) / max_len
+        # spaces = int(math.floor(float(Strongdb.get_terminal_width() % max_len) / float(regs_per_line)))
         regs_per_line, padding = Strongdb.get_display_padding(max_len)
 
-        str += Strongdb.colorize('┌─ Register ' + '─' * (Strongdb.term_width - 13) + '┐\n', 'cyan')
+        str += Strongdb.colorize('┌─ Register ' + '─' * (Strongdb.get_terminal_width() - 13) + '┐\n', 'cyan')
         i = 1;
         for reg_name in self.reg_names:
             if self.old_regs[reg_name]['is_changed'] == True:
@@ -126,7 +121,7 @@ class RegistersModule():
 
             i += 1
 
-        str += Strongdb.colorize('\n└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
+        str += Strongdb.colorize('\n└' + '─' * (Strongdb.get_terminal_width() - 2) + '┘', 'cyan')
         return str
 
 
@@ -172,7 +167,7 @@ class StackModule():
         str = ""
 
         self.stack_info = []
-        str += Strongdb.colorize('┌─ Stack ' + '─' * (Strongdb.term_width - 10) + '┐\n', 'cyan')
+        str += Strongdb.colorize('┌─ Stack ' + '─' * (Strongdb.get_terminal_width() - 10) + '┐\n', 'cyan')
 
         self.get_stack_info()
 
@@ -186,7 +181,7 @@ class StackModule():
                 if idx == len(line) - 1:
                     str += '\n'
 
-        str += Strongdb.colorize('└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
+        str += Strongdb.colorize('└' + '─' * (Strongdb.get_terminal_width() - 2) + '┘', 'cyan')
         return str
 
     def get_stack_info(self):
@@ -448,7 +443,7 @@ class AssemblyModule():
 
     def get_contents(self):
         str = ""
-        str += Strongdb.colorize('┌─ Assembly ' + '─' * (Strongdb.term_width - 13) + '┐\n\n', 'cyan')
+        str += Strongdb.colorize('┌─ Assembly ' + '─' * (Strongdb.get_terminal_width() - 13) + '┐\n\n', 'cyan')
 
         if Strongdb.is_arm_mode():
             length_per_ins = 4
@@ -484,7 +479,7 @@ class AssemblyModule():
                 str += Strongdb.colorize(ins['asm'], 'white') + '\n'
 
 
-        str += Strongdb.colorize('\n└' + '─' * (Strongdb.term_width - 2) + '┘', 'cyan')
+        str += Strongdb.colorize('\n└' + '─' * (Strongdb.get_terminal_width() - 2) + '┘', 'cyan')
         return str
 
     def load_jni_native_table(self):
