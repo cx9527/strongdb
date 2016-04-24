@@ -18,6 +18,7 @@ class Strongdb:
         self.init_var()
         self.init_modules()
         self.init_handlers()
+        self.init_commands()
 
     def set_custom_prompt(self):
         def get_prompt(prompt):
@@ -45,6 +46,14 @@ class Strongdb:
         self.modules['RegistersModule'] = RegistersModule()
         self.modules['StackModule'] = StackModule()
         self.modules['AssemblyModule'] = AssemblyModule()
+
+    def init_commands(self):
+        for cmd in globals().values():
+            try:
+                if issubclass(cmd, gdb.Command):
+                    cmd()
+            except TypeError:
+                pass
 
     def on_continue(self, event):
         print "on continue"
@@ -502,10 +511,63 @@ class AssemblyModule():
         return jni_env_addr
 
 
+class MappingCommand(gdb.Command):
+    '''List of mapped memory regions.'''
+    subcmds = []
+
+    def __init__(self):
+        gdb.Command.__init__(self, "vmmap", gdb.COMMAND_RUNNING, gdb.COMPLETE_NONE, True)
+        self.init_subcommands()
+
+    def init_subcommands(self):
+        self.subcmds.append(MappingCommand.MappingFilterCommand())
+
+    def invoke(self, args, from_tty):
+        try:
+            mapping = Strongdb.run_cmd('info proc mapping')
+            gdb.write(mapping)
+        except Exception, e:
+            print e
+            return
+
+    # subcommands
+
+    class MappingFilterCommand(gdb.Command):
+        '''Memory region of specific module'''
+
+        def __init__(self):
+            gdb.Command.__init__(self, "vmmap -f", gdb.COMMAND_RUNNING)
+
+        def invoke(self, args, from_tty):
+            argv = gdb.string_to_argv(args)
+            result = []
+
+            if len(argv) != 1:
+                raise gdb.GdbError('vmmap -f takes 2 args')
+
+            try:
+                mapping = Strongdb.run_cmd('info proc mapping')
+                mapping = mapping[mapping.find('0x'):].split('\n')
+
+                for item in mapping:
+                    item_list = item.split(None)
+
+                    if len(item_list) == 5 and item_list[4].find(argv[0]) != -1:
+                        result.append('\t\t'.join(item_list))
+
+
+                gdb.write('\n'.join(result) + '\n\n')
+            except Exception, e:
+                print e
+                return
+
+
+
 '''
 command test class
 '''
 class HelloWorld(gdb.Command):
+    ''' test '''
     def __init__(self):
         super(HelloWorld, self).__init__("hello-world", gdb.COMMAND_USER)
 
@@ -516,5 +578,5 @@ class HelloWorld(gdb.Command):
         print "hello world!"
 
 
-HelloWorld()
+
 p = Strongdb()
