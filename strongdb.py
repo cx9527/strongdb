@@ -71,15 +71,19 @@ class Strongdb:
         print 'on continue'
 
     def on_stop(self, event):
-        self.display(self.modules['RegistersModule'].get_contents(), True)
-        self.display(self.modules['AssemblyModule'].get_contents())
-        self.display(self.modules['StackModule'].get_contents())
+        Strongdb.display(self.modules['RegistersModule'].get_contents(), True)
+        Strongdb.display(self.modules['AssemblyModule'].get_contents())
+        Strongdb.display(self.modules['StackModule'].get_contents())
 
-    def display(self, info, clear_screen=False):
+    @staticmethod
+    def display(info, clear_screen=False, color=None):
         if clear_screen:
-            self.clear_screen()
+            Strongdb.clear_screen()
 
-        gdb.write(info)
+        if color != None:
+            gdb.write(Strongdb.colorize(info, color))
+        else:
+            gdb.write(info)
 
     @staticmethod
     def is_arm_mode():
@@ -120,6 +124,8 @@ class Strongdb:
         return Strongdb.colorize('\n└' + '─' * (Strongdb.get_terminal_width() - 2) + '┘', Colors.border_color)
 
 
+# modules
+###############################################
 class RegistersModule():
     old_regs = {}
     reg_names = []
@@ -493,7 +499,8 @@ class AssemblyModule():
                     if self.jni_env.func_address[called_addr] != None:
                         jni_func = "; " + self.jni_env.func_address[called_addr]
 
-                str += Strongdb.colorize(ins['asm'] + '\t' + Strongdb.colorize(jni_func, 'yellow'), Colors.code_highlight_color) + '\n'
+                str += Strongdb.colorize(ins['asm'] + '\t' + Strongdb.colorize(jni_func, 'yellow'),
+                                         Colors.code_highlight_color) + '\n'
             else:
                 str += Strongdb.colorize('\t' + hex(ins['addr'])[:-1] + ':\t', Colors.address_color)
                 str += Strongdb.colorize(ins['asm'], Colors.code_color) + '\n'
@@ -521,6 +528,8 @@ class AssemblyModule():
         return jni_env_addr
 
 
+# commands
+###############################################
 class MappingCommand(gdb.Command):
     '''List of mapped memory regions.'''
 
@@ -534,7 +543,7 @@ class MappingCommand(gdb.Command):
     def invoke(self, args, from_tty):
         try:
             mapping = Strongdb.run_cmd('info proc mapping')
-            gdb.write(mapping)
+            Strongdb.display(mapping)
         except Exception, e:
             print e
             return
@@ -545,14 +554,14 @@ class MappingCommand(gdb.Command):
         '''Memory region of specific module'''
 
         def __init__(self):
-            gdb.Command.__init__(self, 'vmmap -f', gdb.COMMAND_RUNNING)
+            gdb.Command.__init__(self, 'vmmap -f', gdb.COMMAND_NONE)
 
         def invoke(self, args, from_tty):
             argv = gdb.string_to_argv(args)
             result = []
 
             if len(argv) != 1:
-                raise gdb.GdbError('vmmap -f takes 2 args')
+                raise gdb.GdbError('vmmap -f takes 1 arg')
 
             try:
                 mapping = Strongdb.run_cmd('info proc mapping')
@@ -564,7 +573,7 @@ class MappingCommand(gdb.Command):
                     if len(item_list) == 5 and item_list[4].find(argv[0]) != -1:
                         result.append('\t\t'.join(item_list))
 
-                gdb.write('\n'.join(result) + '\n\n')
+                Strongdb.display('\n'.join(result) + '\n\n')
             except Exception, e:
                 print e
                 return
@@ -574,7 +583,7 @@ class ColorCommand(gdb.Command):
     '''Set views color'''
 
     def __init__(self):
-        gdb.Command.__init__(self, 'color', gdb.COMMAND_USER, prefix = True)
+        gdb.Command.__init__(self, 'color', gdb.COMMAND_USER, prefix=True)
         self.init_subcommands()
 
     def init_subcommands(self):
@@ -589,16 +598,16 @@ class ColorCommand(gdb.Command):
         ColorCommand.ColorListCommand()
 
     def invoke(self, args, from_tty):
-        gdb.write(Strongdb.colorize('border color: ' + Colors.border_color + '\n', Colors.border_color))
-        gdb.write(Strongdb.colorize('register name color: ' + Colors.reg_name_color + '\n', Colors.reg_name_color))
-        gdb.write(Strongdb.colorize('register value color: ' + Colors.reg_value_color + '\n', Colors.reg_value_color))
-        gdb.write(Strongdb.colorize('register value changed color: ' + Colors.reg_value_highlight_color + '\n',
-                                    Colors.reg_value_highlight_color))
-        gdb.write(Strongdb.colorize('stack data color: ' + Colors.stack_data_color + '\n', Colors.stack_data_color))
-        gdb.write(Strongdb.colorize('address color: ' + Colors.address_color + '\n', Colors.address_color))
-        gdb.write(Strongdb.colorize('code color: ' + Colors.code_color + '\n', Colors.code_color))
-        gdb.write(Strongdb.colorize('code highlight color: ' + Colors.code_highlight_color + '\n', Colors.code_highlight_color))
-
+        Strongdb.display('border color: ' + Colors.border_color + '\n', color=Colors.border_color)
+        Strongdb.display('register name color: ' + Colors.reg_name_color + '\n', color=Colors.reg_name_color)
+        Strongdb.display('register value color: ' + Colors.reg_value_color + '\n', color=Colors.reg_value_color)
+        Strongdb.display('register value highlight color: ' + Colors.reg_value_highlight_color + '\n',
+                         color=Colors.reg_value_highlight_color)
+        Strongdb.display('stack data color: ' + Colors.stack_data_color + '\n', color=Colors.stack_data_color)
+        Strongdb.display('address color: ' + Colors.address_color + '\n', color=Colors.address_color)
+        Strongdb.display('code color: ' + Colors.code_color + '\n', color=Colors.code_color)
+        Strongdb.display('code highlight color: ' + Colors.code_highlight_color + '\n',
+                         color=Colors.code_highlight_color)
 
     # color border subcmd
     class ColorBorderCommand(gdb.Command):
@@ -611,7 +620,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color border takes 2 args')
+                raise gdb.GdbError('color border takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -630,7 +639,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color reg-name takes 2 args')
+                raise gdb.GdbError('color reg-name takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -649,7 +658,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color reg-value takes 2 args')
+                raise gdb.GdbError('color reg-value takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -668,7 +677,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color reg-value-highlight takes 2 args')
+                raise gdb.GdbError('color reg-value-highlight takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -687,7 +696,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color address takes 2 args')
+                raise gdb.GdbError('color address takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -706,7 +715,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color stack-data takes 2 args')
+                raise gdb.GdbError('color stack-data takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -725,7 +734,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color code takes 2 args')
+                raise gdb.GdbError('color code takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -744,7 +753,7 @@ class ColorCommand(gdb.Command):
             argv = gdb.string_to_argv(args)
 
             if len(argv) != 1:
-                raise gdb.GdbError('color code-highlight takes 2 args')
+                raise gdb.GdbError('color code-highlight takes 1 arg')
 
             try:
                 Colors.COLORS[argv[0]]
@@ -760,6 +769,25 @@ class ColorCommand(gdb.Command):
             gdb.Command.__init__(self, 'color list', gdb.COMMAND_USER)
 
         def invoke(self, args, from_tty):
-            gdb.write(Strongdb.colorize('valid color: ' + ','.join(Colors.COLORS.keys()) + '\n\n', 'green'))
+            Strongdb.display('valid color: ' + ','.join(Colors.COLORS.keys()) + '\n\n', color = 'green')
+
+
+class SetJniEnvCommand(gdb.Command):
+    '''Set jnienv address to $sgdb_jnienv'''
+
+    def __init__(self):
+        gdb.Command.__init__(self, 'set jnienv', gdb.COMMAND_NONE)
+
+    def invoke(self, args, from_tty):
+        argv = gdb.string_to_argv(args)
+
+        if len(argv) != 1:
+            raise gdb.GdbError('set jnienv takes 1 arg')
+
+        if not argv[0].isdigit():
+            raise gdb.GdbError('invalid argument')
+
+        Strongdb.run_cmd('set $sgdb_jnienv = ' + argv[0])
+
 
 p = Strongdb()
