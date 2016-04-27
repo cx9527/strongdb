@@ -1,11 +1,17 @@
 # coding=utf-8
 
 import os
+import sys
 import fcntl
 import termios
 import struct
 import math
+import StringIO
 
+sys.path.insert(0, '.')
+reload(sys)
+sys.setdefaultencoding('utf-8')
+from readelf import ReadElf
 
 class Colors():
     COLORS = {'black': '30m', 'red': '31m', 'green': '32m', 'yellow': '33m', 'blue': '34m', 'magenta': '35m',
@@ -788,6 +794,32 @@ class SetJniEnvCommand(gdb.Command):
             raise gdb.GdbError('invalid argument')
 
         Strongdb.run_cmd('set $sgdb_jnienv = ' + argv[0])
+
+
+class ElfCommand(gdb.Command):
+    '''Display the informations of a elf file'''
+
+    def __init__(self):
+        gdb.Command.__init__(self, 'elf', gdb.COMMAND_USER, True)
+        self.init_subcommands()
+
+    def init_subcommands(self):
+        pass
+
+    def invoke(self, args, from_tty):
+        argv = gdb.string_to_argv(args)
+
+        if len(argv) != 1:
+            raise gdb.GdbError('elf takes 1 arg')
+
+        filename = argv[0]
+        print filename
+        output_stream = StringIO.StringIO()
+        with open(filename, 'rb') as fp:
+            elf = ReadElf(fp, output_stream)
+
+        elf.display_file_header()
+        Strongdb.display(output_stream.getvalue())
 
 
 p = Strongdb()
