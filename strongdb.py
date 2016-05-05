@@ -8,7 +8,8 @@ import struct
 import math
 import StringIO
 
-sys.path.insert(0, '.')
+sys.path.insert(0, '/Users/cx/source-code/strongdb')
+sys.path.insert(0, os.getenv('SGDB_SITEPACKAGES_PATH'))
 reload(sys)
 sys.setdefaultencoding('utf-8')
 from readelf import ReadElf

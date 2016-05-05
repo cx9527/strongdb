@@ -17,6 +17,11 @@ git clone https://github.com/cx9527/strongdb.git ~/strongdb
 echo "source ~/strongdb/strongdb.py" > ~/.gdbinit
 ```
 
+.bashrc/.zshrc添加环境变量SGDB\_SITEPACKAGES\_PATH
+```
+export SGDB_SITEPACKAGES_PATH=`python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()"`
+```
+
 ## Commands
 ### vmmap - 列出内存布局
 * vmmap : 列出内存布局
