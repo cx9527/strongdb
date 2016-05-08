@@ -802,12 +802,38 @@ class SetJniEnvCommand(gdb.Command):
 class ElfCommand(gdb.Command):
     '''Display the informations of a elf file'''
 
+    file_pointer = None
+    tmp_file_path = None
+
     def __init__(self):
-        gdb.Command.__init__(self, 'elf', gdb.COMMAND_USER, True)
+        gdb.Command.__init__(self, 'elf', gdb.COMMAND_USER, prefix = True)
         self.init_subcommands()
 
     def init_subcommands(self):
-        pass
+        ElfCommand.ElfSectionsCommand()
+        ElfCommand.ElfSegmentsCommand()
+        ElfCommand.ElfRelocationsCommand()
+
+    # parse elf file
+    @staticmethod
+    def parse_elf_file(start, end, out):
+        ElfCommand.tmp_file_path = tempfile.mktemp(prefix = 'strong_tmp_')
+
+        Strongdb.run_cmd('dump memory ' + ElfCommand.tmp_file_path + ' ' + start + ' ' + end)
+
+        try:
+            ElfCommand.file_pointer = open(ElfCommand.tmp_file_path, 'rb')
+        except:
+            raise gdb.GdbError('cannot open temp file')
+
+        elf = ReadElf(ElfCommand.file_pointer, out)
+
+        return elf
+
+    @staticmethod
+    def release_file():
+        ElfCommand.file_pointer.close()
+        os.remove(ElfCommand.tmp_file_path)
 
     def invoke(self, args, from_tty):
         argv = gdb.string_to_argv(args)
@@ -817,21 +843,61 @@ class ElfCommand(gdb.Command):
 
         start_addr = argv[0]
         end_addr = argv[1]
-
         output_stream = StringIO.StringIO()
 
-        tmp_file_path = tempfile.mktemp(prefix = 'strong_tmp_')
-
-        Strongdb.run_cmd('dump memory ' + tmp_file_path + ' ' + start_addr + ' ' + end_addr)
-
-        with open(tmp_file_path, 'rb') as fp:
-            elf = ReadElf(fp, output_stream)
-
+        elf = ElfCommand.parse_elf_file(start_addr, end_addr, output_stream)
         elf.display_file_header()
         Strongdb.display(output_stream.getvalue())
 
-        fp.close()
-        os.remove(tmp_file_path)
+        ElfCommand.release_file()
+
+    # elf sections subcmd
+    class ElfSectionsCommand(gdb.Command):
+        '''Display the Sections information of a elf file'''
+
+        def __init__(self):
+            gdb.Command.__init__(self, 'elf -S', gdb.COMMAND_USER)
+
+        def invoke(self, args, from_tty):
+            argv = gdb.string_to_argv(args)
+
+            if len(argv) != 2:
+                raise gdb.GdbError('elf takes 2 args')
+
+            start_addr = argv[0]
+            end_addr = argv[1]
+
+            output_stream = StringIO.StringIO()
+
+            elf = ElfCommand.parse_elf_file(start_addr, end_addr, output_stream)
+            elf.display_section_headers()
+            Strongdb.display(output_stream.getvalue())
+
+            ElfCommand.release_file()
+
+    # elf segments subcmd
+    class ElfSegmentsCommand(gdb.Command):
+        '''Display the Segments information of a elf file'''
+
+        def __init__(self):
+            gdb.Command.__init__(self, 'elf -l', gdb.COMMAND_USER)
+
+        def invoke(self, args, from_tty):
+            argv = gdb.string_to_argv(args)
+
+            if len(argv) != 2:
+                raise gdb.GdbError('elf takes 2 args')
+
+            start_addr = argv[0]
+            end_addr = argv[1]
+
+            output_stream = StringIO.StringIO()
+
+            elf = ElfCommand.parse_elf_file(start_addr, end_addr, output_stream)
+            elf.display_program_headers()
+            Strongdb.display(output_stream.getvalue())
+
+            ElfCommand.release_file()
 
 
 p = Strongdb()
