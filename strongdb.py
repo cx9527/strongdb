@@ -7,6 +7,8 @@ import termios
 import struct
 import math
 import StringIO
+import tempfile
+import gdb
 
 sys.path.insert(0, '/Users/cx/source-code/strongdb')
 sys.path.insert(0, os.getenv('SGDB_SITEPACKAGES_PATH'))
@@ -810,17 +812,26 @@ class ElfCommand(gdb.Command):
     def invoke(self, args, from_tty):
         argv = gdb.string_to_argv(args)
 
-        if len(argv) != 1:
-            raise gdb.GdbError('elf takes 1 arg')
+        if len(argv) != 2:
+            raise gdb.GdbError('elf takes 2 args')
 
-        filename = argv[0]
-        print filename
+        start_addr = argv[0]
+        end_addr = argv[1]
+
         output_stream = StringIO.StringIO()
-        with open(filename, 'rb') as fp:
+
+        tmp_file_path = tempfile.mktemp(prefix = 'strong_tmp_')
+
+        Strongdb.run_cmd('dump memory ' + tmp_file_path + ' ' + start_addr + ' ' + end_addr)
+
+        with open(tmp_file_path, 'rb') as fp:
             elf = ReadElf(fp, output_stream)
 
         elf.display_file_header()
         Strongdb.display(output_stream.getvalue())
+
+        fp.close()
+        os.remove(tmp_file_path)
 
 
 p = Strongdb()
