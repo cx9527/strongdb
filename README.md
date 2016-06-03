@@ -6,6 +6,9 @@
 
 ![debug1](screenshots/debug1.png)
 
+## Dependencies
+* [Keystone](https://github.com/keystone-engine/keystone)
+
 ## Modules
 * Register: 调试时用于显示寄存器值。
 * Assembly: 调试时显示汇编代码。
