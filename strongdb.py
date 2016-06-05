@@ -14,6 +14,7 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 from keystone import *
 
+
 class Colors():
     COLORS = {'black': '30m', 'red': '31m', 'green': '32m', 'yellow': '33m', 'blue': '34m', 'magenta': '35m',
               'cyan': '36m', 'white': '37m'}
@@ -65,6 +66,7 @@ class Strongdb:
         self.modules['RegistersModule'] = RegistersModule()
         self.modules['StackModule'] = StackModule()
         self.modules['AssemblyModule'] = AssemblyModule()
+        self.modules['BacktraceModule'] = BacktraceModule()
 
     def init_commands(self):
         for cmd in globals().values():
@@ -81,6 +83,7 @@ class Strongdb:
         Strongdb.display(self.modules['RegistersModule'].get_contents(), True)
         Strongdb.display(self.modules['AssemblyModule'].get_contents())
         Strongdb.display(self.modules['StackModule'].get_contents())
+        Strongdb.display(self.modules['BacktraceModule'].get_contents())
 
     @staticmethod
     def display(info, clear_screen=False, color=None):
@@ -99,7 +102,7 @@ class Strongdb:
 
     @staticmethod
     def clear_screen():
-        #gdb.write('\x1b[H\x1b[J')
+        # gdb.write('\x1b[H\x1b[J')
         pass
 
     @staticmethod
@@ -192,7 +195,24 @@ class RegistersModule():
 
 class BacktraceModule():
     def get_contents(self):
-        return ''
+        str = ''
+
+        str += Strongdb.border_header('Backtrace')
+
+        frame = gdb.selected_frame()
+        while frame != None:
+            str += '\t%s -> %s()\n' % (Strongdb.colorize(hex(frame.pc())[:-1], Colors.address_color),
+                                       frame.name() if frame.name() != None else '??')
+
+            older_frm = frame.older()
+            if older_frm == None:
+                str += Strongdb.colorize('\t' + gdb.frame_stop_reason_string(frame.unwind_stop_reason()),
+                                         Colors.address_color)
+
+            frame = older_frm
+
+        str += Strongdb.border_footer()
+        return str
 
 
 class StackModule():
@@ -794,7 +814,7 @@ class ColorCommand(gdb.Command):
             gdb.Command.__init__(self, 'color list', gdb.COMMAND_USER)
 
         def invoke(self, args, from_tty):
-            Strongdb.display('valid color: ' + ','.join(Colors.COLORS.keys()) + '\n\n', color = 'green')
+            Strongdb.display('valid color: ' + ','.join(Colors.COLORS.keys()) + '\n\n', color='green')
 
 
 class SetJniEnvCommand(gdb.Command):
@@ -813,5 +833,6 @@ class SetJniEnvCommand(gdb.Command):
             raise gdb.GdbError('invalid argument')
 
         Strongdb.run_cmd('set $sgdb_jnienv = ' + argv[0])
+
 
 p = Strongdb()
