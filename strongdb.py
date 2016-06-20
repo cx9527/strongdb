@@ -58,6 +58,7 @@ class Strongdb:
         Strongdb.run_cmd('set $sgdb_stack_width = 4')
         Strongdb.run_cmd('set $sgdb_jnienv = 0')
         Strongdb.run_cmd('set pagination off')
+        Strongdb.run_cmd('set arm abi AAPCS')
 
     def init_handlers(self):
         gdb.events.stop.connect(self.on_stop)
@@ -833,6 +834,21 @@ class SetJniEnvCommand(gdb.Command):
             raise gdb.GdbError('invalid argument')
 
         Strongdb.run_cmd('set $sgdb_jnienv = ' + argv[0])
+
+
+class SolibCommand(gdb.Command):
+    '''Set solib-search-path'''
+
+    def __init__(self):
+        gdb.Command.__init__(self, 'solib', gdb.COMMAND_RUNNING)
+
+    def invoke(self, args, from_tty):
+        argv = gdb.string_to_argv(args)
+
+        if len(argv) != 1:
+            raise gdb.GdbError('solib takes 1 arg')
+
+        Strongdb.run_cmd('set solib-search-path %s' % (argv[0]))
 
 
 p = Strongdb()
