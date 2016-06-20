@@ -53,3 +53,7 @@ To use jni functions parsing feature，you should get JNIEnv address first.And`s
 * Jni functions parsing. (achieved)
 * More debuggin commands. (working)
 * Function args parsing. (working)
+
+## Author
+* Weibo: [csddl](http://weibo.com/csddl)
+* Gmail: chxx625@gmail.com

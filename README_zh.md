@@ -53,3 +53,7 @@ export SGDB_SITEPACKAGES_PATH=`python -c "from distutils.sysconfig import get_py
 * 实现辅助调试用的指令。（正在）
 * 解析jni函数调用。 (已实现)
 * 解析函数参数。
+
+## 作者
+* Weibo: [csddl](http://weibo.com/csddl)
+* Gmail: chxx625@gmail.com
